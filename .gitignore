@@ -34,3 +34,4 @@ dist-ssr
 # Test artifacts
 .playwright-mcp/
 *.png
+!src/assets/*.png

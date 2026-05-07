@@ -1,9 +1,23 @@
-import { useRef, type ReactNode, type CSSProperties } from "react";
+import { useRef, useEffect, type ReactNode, type CSSProperties } from "react";
+import { useSearch } from "@tanstack/react-router";
 import { useCalculator } from "@/hooks/useCalculator";
 import { SettingsPanel } from "./SettingsPanel";
 import { formatDisplay } from "@/lib/magic";
+import applePng from "@/assets/apple.png";
+import androidPng from "@/assets/android.png";
 
 type BtnKind = "num" | "op" | "fn" | "eq";
+type Op = "+" | "−" | "×" | "÷" | null;
+
+function applyOp(a: number, b: number, op: Op): number {
+  switch (op) {
+    case "+": return a + b;
+    case "−": return a - b;
+    case "×": return a * b;
+    case "÷": return b === 0 ? a : a / b;
+    default: return b;
+  }
+}
 
 interface BtnDef {
   key: string;
@@ -105,8 +119,23 @@ const IOS_BTN: Record<BtnKind, { bg: string; shadow: string }> = {
 export function Calculator() {
   const c = useCalculator();
   const { state, settings, press, flashKey, cancelMagic, revealClimax } = c;
-  const isAndroid = settings.skin === "android";
+  const search = useSearch({ from: "/" });
+  const skinOverride = (search as { skin?: "ios" | "android" }).skin;
+  const activeSkin = skinOverride ?? settings.skin;
+  const isAndroid = activeSkin === "android";
   const LAYOUT = isAndroid ? LAYOUT_ANDROID : LAYOUT_IOS;
+
+  // Update favicon based on active skin
+  useEffect(() => {
+    const href = isAndroid ? androidPng : applePng;
+    let link = document.querySelector<HTMLLinkElement>("link[rel~='icon']");
+    if (!link) {
+      link = document.createElement("link");
+      link.rel = "icon";
+      document.head.appendChild(link);
+    }
+    link.href = href;
+  }, [isAndroid]);
 
   const fmt = (s: string) => {
     if (/^-?\d+\.?\d*$/.test(s)) {
@@ -136,15 +165,17 @@ export function Calculator() {
     );
   }
 
-  // Android formula line
-  let androidFormula: string | null = null;
-  let androidShowResultGreen = false;
-  if (isAndroid) {
-    if (state.justEvaluated && state.op === null && state.prev === null) {
-      androidShowResultGreen = true;
-    } else if (state.prev !== null && state.op) {
-      androidFormula = formatDisplay(state.prev) + " " + opSym(state.op);
-    }
+  // Android: full expression string to display
+  const androidExprFull = state.expression
+    ? state.expression + (state.justEvaluated ? "" : state.display)
+    : "";
+
+  // Android result preview (only when there's a pending op and we have a right-hand operand)
+  let androidPreview: string | null = null;
+  if (isAndroid && state.prev !== null && state.op && !state.justEvaluated) {
+    const cur = parseFloat(state.display) || 0;
+    const res = applyOp(state.prev, cur, state.op);
+    if (isFinite(res)) androidPreview = formatDisplay(res);
   }
 
   // iOS display font size — scales down for long numbers
@@ -156,34 +187,77 @@ export function Calculator() {
 
   if (isAndroid) {
     return (
-      <div className="min-h-screen w-full bg-white flex flex-col select-none touch-manipulation">
-        <div className="flex-1 flex flex-col justify-end px-6 pb-2 pt-12 gap-1">
+      <div className="min-h-screen w-full flex flex-col select-none touch-manipulation" style={{ background: "#f8f9fa" }}>
+        {/* Display area */}
+        <div className="flex-1 flex flex-col justify-end px-5 pb-1 pt-10">
+          {/* Expression line */}
           <div
-            className="text-right font-light text-5xl tracking-tight overflow-hidden whitespace-nowrap min-h-[3rem]"
-            style={{ fontVariantNumeric: "tabular-nums", color: androidShowResultGreen ? ANDROID_GREEN : "#202124" }}
+            className="text-right tracking-tight overflow-hidden min-h-[2.5rem] flex items-end justify-end flex-wrap gap-0"
+            style={{ fontVariantNumeric: "tabular-nums", fontSize: "clamp(1.5rem,7vw,2rem)", fontWeight: 400, lineHeight: 1.2, wordBreak: "break-all" }}
           >
-            {displayText}
+            {androidExprFull
+              ? androidExprFull.split(/([+−×÷])/).map((tok, i) =>
+                  /^[+−×÷]$/.test(tok)
+                    ? <span key={i} style={{ color: ANDROID_GREEN }}>{tok}</span>
+                    : <span key={i} style={{ color: "#202124" }}>{tok}</span>
+                )
+              : <span style={{ color: "#202124" }}>{displayText}</span>
+            }
           </div>
-          <div
-            className="text-right font-light text-xl tracking-tight overflow-hidden whitespace-nowrap min-h-[1.5rem]"
-            style={{ fontVariantNumeric: "tabular-nums", color: ANDROID_GREEN, opacity: 0.8 }}
-          >
-            {androidFormula ?? ""}
-          </div>
-          <div className="flex items-center justify-end pt-2 border-b border-gray-200 pb-3">
-            <button
-              onClick={() => press("⌫")}
-              className="w-10 h-10 flex items-center justify-center rounded-full active:bg-gray-100"
-              style={{ color: ANDROID_GREEN }}
-              aria-label="backspace"
+          {/* Preview / current number */}
+          {androidExprFull ? (
+            <div
+              className="text-right font-light tracking-tight overflow-hidden whitespace-nowrap"
+              style={{ fontVariantNumeric: "tabular-nums", color: "#9aa0a6", fontSize: "clamp(1.1rem,5vw,1.4rem)", marginTop: 2, minHeight: "1.6rem" }}
             >
-              <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-                <path d="M21 5H8l-7 7 7 7h13a2 2 0 0 0 2-2V7a2 2 0 0 0-2-2z" />
-                <line x1="18" y1="9" x2="12" y2="15" /><line x1="12" y1="9" x2="18" y2="15" />
+              {androidPreview ?? ""}
+            </div>
+          ) : null}
+        </div>
+
+        {/* Toolbar */}
+        <div className="flex items-center justify-between px-4 py-2">
+          <div className="flex items-center gap-1">
+            {/* Clock */}
+            <button className="w-10 h-10 flex items-center justify-center rounded-full active:bg-gray-200" style={{ color: "#5f6368" }} onClick={() => {}} aria-label="historial">
+              <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.6" strokeLinecap="round" strokeLinejoin="round">
+                <circle cx="12" cy="12" r="8.5" />
+                <polyline points="12 7 12 12 15 14.5" />
+              </svg>
+            </button>
+            {/* Ruler */}
+            <button className="w-10 h-10 flex items-center justify-center rounded-full active:bg-gray-200" style={{ color: "#5f6368" }} onClick={() => {}} aria-label="conversor">
+              <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.6" strokeLinecap="round" strokeLinejoin="round">
+                <rect x="2" y="8" width="20" height="8" rx="2" />
+                <line x1="6" y1="12" x2="6" y2="16" /><line x1="10" y1="12" x2="10" y2="16" />
+                <line x1="14" y1="12" x2="14" y2="16" /><line x1="18" y1="12" x2="18" y2="16" />
+              </svg>
+            </button>
+            {/* Formula / scientific */}
+            <button className="w-10 h-10 flex items-center justify-center rounded-full active:bg-gray-200" style={{ color: "#5f6368" }} onClick={() => c.setShowSettings(true)} aria-label="ajustes">
+              <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.6" strokeLinecap="round" strokeLinejoin="round">
+                <path d="M4 19 L8 5" /><path d="M16 5 L20 19" />
+                <path d="M3 13 L21 13" /><path d="M6 19 L18 19" />
               </svg>
             </button>
           </div>
+          {/* Backspace */}
+          <button
+            className="w-10 h-10 flex items-center justify-center rounded-full active:bg-gray-200"
+            style={{ color: "#5f6368" }}
+            onPointerDown={(e) => e.preventDefault()}
+            onClick={() => press("⌫")}
+            aria-label="borrar"
+          >
+            <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.7" strokeLinecap="round" strokeLinejoin="round">
+              <path d="M20 5H8.5L2 12l6.5 7H20a2 2 0 0 0 2-2V7a2 2 0 0 0-2-2z" />
+              <line x1="15" y1="9" x2="10" y2="15" /><line x1="10" y1="9" x2="15" y2="15" />
+            </svg>
+          </button>
         </div>
+        <div className="mx-4 border-b" style={{ borderColor: "#dadce0" }} />
+
+        {/* Button grid */}
         <div className="grid grid-cols-4 gap-2 p-3 pb-6">
           {LAYOUT.map((b) => (
             <CalcButton key={b.key} def={b} skin="android" active={flashKey === b.key}

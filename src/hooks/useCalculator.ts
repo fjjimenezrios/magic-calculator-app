@@ -15,6 +15,7 @@ interface PersistedState {
   prev: number | null;
   op: Op;
   justEvaluated: boolean;
+  expression: string;
   // magic
   magicActive: boolean;
   T: string | null;
@@ -31,6 +32,7 @@ const initialState: PersistedState = {
   prev: null,
   op: null,
   justEvaluated: false,
+  expression: "",
   magicActive: false,
   T: null,
   C: null,
@@ -279,12 +281,21 @@ export function useCalculator() {
         } else {
           prevVal = cur;
         }
+        let newExpression: string;
+        if (prev.justEvaluated && prev.expression.length > 0) {
+          newExpression = prev.expression.slice(0, -1) + key;
+        } else if (prev.justEvaluated) {
+          newExpression = prev.display + key;
+        } else {
+          newExpression = prev.expression + prev.display + key;
+        }
         return {
           ...prev,
           prev: prevVal,
           op: key as Op,
           display: prev.justEvaluated ? prev.display : String(prevVal),
           justEvaluated: true,
+          expression: newExpression,
         };
       });
       return;
@@ -302,6 +313,7 @@ export function useCalculator() {
           prev: null,
           op: null,
           justEvaluated: true,
+          expression: "",
         };
       });
       return;
