@@ -308,6 +308,35 @@ export function useCalculator() {
     }
   };
 
+  // Keyboard support
+  useEffect(() => {
+    const onKey = (e: KeyboardEvent) => {
+      if (e.metaKey || e.ctrlKey || e.altKey) return;
+      const map: Record<string, string> = {
+        "0": "0", "1": "1", "2": "2", "3": "3", "4": "4",
+        "5": "5", "6": "6", "7": "7", "8": "8", "9": "9",
+        ".": ".", ",": ".",
+        "+": "+",
+        "-": "−",
+        "*": "×",
+        "/": "÷",
+        "Enter": "=",
+        "=": "=",
+        "Escape": "AC",
+        "Delete": "AC",
+        "Backspace": "⌫",
+        "%": "%",
+      };
+      const key = map[e.key];
+      if (key) {
+        e.preventDefault();
+        press(key);
+      }
+    };
+    window.addEventListener("keydown", onKey);
+    return () => window.removeEventListener("keydown", onKey);
+  }, [press]);
+
   return {
     state: s,
     settings,
