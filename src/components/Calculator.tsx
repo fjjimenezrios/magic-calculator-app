@@ -1,5 +1,5 @@
 import { useRef, useEffect, type ReactNode, type CSSProperties } from "react";
-import { useSearch } from "@tanstack/react-router";
+import { useSearch, useNavigate } from "@tanstack/react-router";
 import { useCalculator } from "@/hooks/useCalculator";
 import { SettingsPanel } from "./SettingsPanel";
 import { formatDisplay } from "@/lib/magic";
@@ -120,9 +120,17 @@ export function Calculator() {
   const c = useCalculator();
   const { state, settings, press, flashKey, cancelMagic, revealClimax } = c;
   const search = useSearch({ from: "/" });
+  const navigate = useNavigate({ from: "/" });
   const skinOverride = (search as { skin?: "ios" | "android" }).skin;
   const activeSkin = skinOverride ?? settings.skin;
   const isAndroid = activeSkin === "android";
+
+  // Keep URL param in sync when user changes skin via settings
+  useEffect(() => {
+    if (skinOverride && skinOverride !== settings.skin) {
+      navigate({ search: { skin: settings.skin as "ios" | "android" } });
+    }
+  }, [settings.skin]);
   const LAYOUT = isAndroid ? LAYOUT_ANDROID : LAYOUT_IOS;
 
   // Sync favicon, apple-touch-icon, manifest and body bg based on active skin
