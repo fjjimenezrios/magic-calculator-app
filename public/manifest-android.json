@@ -1,0 +1,11 @@
+{
+  "name": "Calculator",
+  "short_name": "Calculator",
+  "start_url": "/magic-calculator-app/?skin=android",
+  "display": "standalone",
+  "background_color": "#f8f9fa",
+  "theme_color": "#f8f9fa",
+  "icons": [
+    { "src": "/magic-calculator-app/icons/android.png", "sizes": "512x512", "type": "image/png", "purpose": "any maskable" }
+  ]
+}

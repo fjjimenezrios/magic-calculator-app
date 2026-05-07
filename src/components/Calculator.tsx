@@ -125,18 +125,39 @@ export function Calculator() {
   const isAndroid = activeSkin === "android";
   const LAYOUT = isAndroid ? LAYOUT_ANDROID : LAYOUT_IOS;
 
-  // Update favicon + body background based on active skin
+  // Sync favicon, apple-touch-icon, manifest and body bg based on active skin
   useEffect(() => {
-    const href = isAndroid ? androidPng : applePng;
-    let link = document.querySelector<HTMLLinkElement>("link[rel~='icon']");
-    if (!link) {
-      link = document.createElement("link");
-      link.rel = "icon";
-      document.head.appendChild(link);
+    const base = "/magic-calculator-app";
+    const iconHref = isAndroid ? androidPng : applePng;
+    const touchIconHref = isAndroid ? `${base}/icons/android.png` : `${base}/icons/apple.png`;
+    const manifestHref = isAndroid ? `${base}/manifest-android.json` : `${base}/manifest-ios.json`;
+    const themeColor = isAndroid ? "#f8f9fa" : "#000000";
+    const bg = isAndroid ? "#f8f9fa" : "#000";
+
+    // favicon
+    let favLink = document.querySelector<HTMLLinkElement>("link[rel~='icon']");
+    if (!favLink) {
+      favLink = document.createElement("link");
+      favLink.rel = "icon";
+      document.head.appendChild(favLink);
     }
-    link.href = href;
-    document.body.style.background = isAndroid ? "#f8f9fa" : "#000";
-    document.documentElement.style.background = isAndroid ? "#f8f9fa" : "#000";
+    favLink.href = iconHref;
+
+    // apple-touch-icon
+    const touchLink = document.getElementById("apple-touch-icon") as HTMLLinkElement | null;
+    if (touchLink) touchLink.href = touchIconHref;
+
+    // manifest
+    const manifestLink = document.getElementById("manifest-link") as HTMLLinkElement | null;
+    if (manifestLink) manifestLink.href = manifestHref;
+
+    // theme-color
+    const themeMeta = document.getElementById("theme-color") as HTMLMetaElement | null;
+    if (themeMeta) themeMeta.content = themeColor;
+
+    // body / html background
+    document.body.style.background = bg;
+    document.documentElement.style.background = bg;
   }, [isAndroid]);
 
   const fmt = (s: string) => {
