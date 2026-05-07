@@ -125,7 +125,7 @@ export function Calculator() {
   const isAndroid = activeSkin === "android";
   const LAYOUT = isAndroid ? LAYOUT_ANDROID : LAYOUT_IOS;
 
-  // Update favicon based on active skin
+  // Update favicon + body background based on active skin
   useEffect(() => {
     const href = isAndroid ? androidPng : applePng;
     let link = document.querySelector<HTMLLinkElement>("link[rel~='icon']");
@@ -135,6 +135,8 @@ export function Calculator() {
       document.head.appendChild(link);
     }
     link.href = href;
+    document.body.style.background = isAndroid ? "#f8f9fa" : "#000";
+    document.documentElement.style.background = isAndroid ? "#f8f9fa" : "#000";
   }, [isAndroid]);
 
   const fmt = (s: string) => {
